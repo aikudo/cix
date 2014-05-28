@@ -1,0 +1,472 @@
+                             Implementation of a
+                          Priority-Queue Scheduler
+                                     for
+                                    Linux
+
+                        Hubertus Franke, Mike Kravetz
+                         IBM Linux Technology Center
+                   frankeh@us.ibm.com, kravetz@us.ibm.com
+
+                         Version 0.1, December 2000
+   _______________________________________________________________________
+
+Introduction
+
+   As the title implies, this paper describes an implementation of a
+   priority queue based scheduler for Linux. The current Linux scheduler
+   is designed around a single run-queue which may become a bottleneck
+   while running workloads with high task counts. In addition, systems
+   with multiple CPUs may find the single run-queue lock a point of
+   contention.
+
+   The purpose of this implementation is to explore what effect
+   priority-based run queues have on the scalability of the Linux
+   scheduler. The design goals of the implementation are the following:
+     * Maintain the existing scheduler behavior/semantics.
+     * Minimize code changes. Use as much of the existing code as
+       possible.
+
+   This implementation of a priority-queue based scheduler maintains
+   multiple queues, one for a set of priority levels. At scheduling time,
+   the search for a suitable task to run can be limited to a certain
+   priority range defined by the top most priority task in the system and
+   priority boost given for tasks running on the same processor and on the
+   same memory map. The basic premise is that by maintaining multiple
+   priority queues and limiting the number of queues to be searched we
+   hope to reduce the number of tasks inspected during the scheduling
+   cycle and thus reduce the lock hold time. A shorter lock hold time
+   might increase the scalability of the scheduler. Major code changes are
+   pretty much isolated within the schedule() and the queue management
+   routines.
+
+
+Data Structures and Variables for Priority Queues
+
+   This implementation does not define any new data structures.
+
+   This implementation defines a set of priority queues (33) in the file
+   sched.c :
+
+     #define NUM_PRIO_QUEUES (32)
+     #define REALTIME_QID    (NUM_PRIO_QUEUES)
+
+     static struct list_head prio_queues[NUM_PRIO_QUEUES+1];
+     int topqid = -1;
+
+   The priority queues replace the single run queue runqueue_head of the
+   current scheduler. Nevertheless, the set of priority queues still form
+   a "conceptual single run queue", though the organization is not a
+   single list anymore. The access to these various priority queues making
+   up the run queue is still guarded by the existing runqueue_lock.
+
+Establishing priority queues
+
+   The current scheduler determines the relative priority of a task
+   through a goodness value. The goodness of a task as computed by the
+   goodness() routine  is composed of two parts, (a) affinity and (b)
+   non-affinity. The affinity part is based on the following task data
+   structure members:
+
+     task->processor
+
+     task->mm The non-affinity part (na_goodness) is based on the
+   following task data structure members.
+
+     task->policy
+
+     task->rt_priority (real-time only)
+
+     task->nice
+
+     task->counter The current scheduler selects the task with the highest
+   goodness value from the list of all runnable tasks, i.e. tasks that are
+   enqueued in the runqueue.. Realtime tasks have always higher goodness
+   values then any other tasks in the system and are ordered by the
+   rt_priority field. On every timer tick interrupt, the counter is
+   decremented and if it reached 0 a reschedule is forced. Tasks that have
+   a counter value of 0 are non-schedulable though they remain in the
+   runqueue. When all tasks in the runqueue have a 0-counter, then the
+   current scheduler resets the counter value through the NICE_TO_TICKS
+   macro.
+
+   The goodness value range for non-realtime tasks is architecture
+   dependent. For instance on the x86 architecture the goodness value
+   ranges from 0-61. The assignment of tasks to a priority queue is only
+   based on the non-affinity goodness value of a particular task. Since
+   the number of priority queues is selected to be smaller then the
+   potential goodness value range, the function task_to_qid(struct
+   task_struct *p) is used to map a task to an index in the set of
+   priority queue. This mapping has to be strictly ordered, in other
+   words: na_goodness(t1) > na_goodness(t2)  implies task_to_qid(t1) >=
+   task_to_qid(t2).
+
+   Two special case priority queues are set aside. The highest priority
+   queue (qid= REALTIME_QID)is set aside for the realtime processes. The
+   lowest priority queue (qid=0) is set aside for process with 0-counter
+   and is never traversed to come to a scheduling decision.
+
+Queue Manipulation Routines
+
+   The queue manipulation routines have been modified as follows:
+
+   When adding a task to the "conceptually single" run_queue, we first
+   determine which priority queue the task belongs to by calling
+   task_to_qid and then inserting the task into the appropriate queue. As
+   with the current scheduler, any manipulation of the run queue still
+   requires holding the lock. We further maintain the highest index topqid
+   in where there might be a task enqueued. The reason we use might is
+   that we do not modify the del_from_runqueue, as a result the topqid can
+   be higher.
+
+     static inline void add_to_runqueue(struct task_struct * p)
+     {
+             int qid = task_to_qid(p);
+             list_add(&p->run_list, &prio_queues[qid]);
+             if (qid > topqid) topqid = qid;
+             nr_running++;
+     }
+
+     static inline void move_last_runqueue(struct task_struct * p)
+     {
+             int qid = task_to_qid(p);
+             list_del(&p->run_list);
+             list_add_tail(&p->run_list, &prio_queues[qid]);
+             if (qid > topqid) topqid = qid;
+     }
+
+     static inline void move_first_runqueue(struct task_struct * p)
+     {
+             int qid = task_to_qid(p);
+             list_del(&p->run_list);
+             list_add(&p->run_list, &prio_queues[qid]);
+             if (qid > topqid) topqid = qid;
+     }
+
+   Since the task_to_qid depends on the the policy, rt_priority, nice and
+   the counter field of the task, everytime one of these fields changes,
+   the task needs to be reenqueued into the proper priority queue. We
+   defined the following function to update the runqueue of a task based
+   on its current settings.
+
+     void update_runqueue(struct task_struct * p)
+     {
+             /* this is called from three locations
+              * timer.c   update_timer
+              * fork.c
+              * exit.c
+              */
+
+             unsigned long flags;
+             int qid;
+
+             /* there seems to be a bug every so often that a process
+              * that is running does not seem on the runqueue.
+              * this problem has not been identified yet.. we just keep
+     the
+              * task where it is for this rare scenario.
+              * Also idle processes shouldn't be updated..
+              * The scheduler will catch this problem anyway.
+              */
+             if (!task_on_runqueue(p))
+                 return;
+             spin_lock_irqsave(&runqueue_lock, flags);
+             qid = task_to_qid(p);
+             list_del(&p->run_list);
+             list_add(&p->run_list, &prio_queues[qid]);
+             if (qid > topqid) topqid = qid;
+             spin_unlock_irqrestore(&runqueue_lock, flags);
+     }
+
+   A similar function update_runqueue_locked() is provided that does not
+   acquire the lock and which is invoked in cases where the runqueue lock
+   is already held. The prototypes for this function was added to
+   `include/linux/sched.h'.
+
+   There are various cases where the update_runqueue has to be invoked:
+
+   In do_fork()  [ kernel/fork.c ]   the counter value of the parent task
+   is divided between the parent and the newly created child. Since the
+   counter value changed for the parent, the parent's priority queue needs
+   to be updated. The child's priority queue does not have to be updated,
+   because the child is not yet enqueued in the priority queue. Currently
+   there still seems a problem that needs to be identified that shows up
+   when this update_runqueue is enabled. For the current patch, we
+   therefore disable it. Disabling does not constitute any problem, but
+   merely results in current being in a higher priority queue than it
+   should be. Since the goodness value is still computed within priotity
+   queue this merely posts an additional overhead.
+
+     p->counter = (current->counter + 1) >> 1;
+     current->counter >>= 1;
+     if (!current->counter)
+         current->need_resched = 1;
+     update_runqueue(current);
+
+
+   In release(struct task_struct *p)   [ kernel/exit.c ] the counter value
+   of the task to be released is added to the invoking task. At that point
+   we invoke update_runqueue on the current process to reflect the change
+   in the priority that current received through the increase in its
+   counter value.
+
+     current->counter += p->counter;
+     if (current->counter >= MAX_COUNTER)
+         current->counter = MAX_COUNTER;
+     update_runqueue(current);
+     free_task_struct(p);
+
+   In update_process_times( ) [ kernel/timer.c ] the counter value is
+   updated as part of the timer interrupt. Consequently the priority queue
+   has to be updated. However this is not necessary for realtime tasks.
+
+     if (--p->counter <= 0) {
+         p->counter = 0;
+         p->need_resched = 1;
+     }
+     if (p->policy == SCHED_OTHER)
+         update_runqueue(p);
+     if (p->nice > 0)
+         kstat.per_cpu_nice[cpu] += user_tick;
+     else
+         kstat.per_cpu_user[cpu] += user_tick;
+
+
+   In sys_nice ( ) [ kernel/sched.c] the nice value for the currently
+   running task is updated and consequently the update_runqueue needs to
+   be invoked.
+   In sys_setpriority [ kernel/sys.c ] the same rational holds.
+
+   In setscheduler() [ kernel/sched.c] the policy and rt_priority of a
+   task are changed. Since move_first_runqueue is already invoked,
+   update_runqueue is not necessary.
+
+schedule()
+
+   The schedule(void) function pretty much stays in tact as is, but
+   requires two modifications. Rather then searching the entire run queue
+   list, as done in the current scheduler, we first determine the proper
+   range of priority queues to be searched for a proper task. First we
+   update the topqid index into the priority queues to determine the
+   highest non-empty priority queue. Next we determine the lowest priority
+   queue botqid that needs to be examined. By default botqid>0. The
+   current scheduler searches the entire list based on the goodness value
+   on the invoking cpu. As stated above, the goodness value is made up of
+   the non-affinity goodness that was used to determine the priority queue
+   of a task and the affinity boost PROC_CHANGE_PENALTY that task receives
+   for having run on the invoking cpu and/or for running under the same
+   memory management object, where the boost is 1.Consequently there is no
+   chance that we can find a task below botqid = topqid -
+   PROC_CHANGE_PENALTY-1 that would sustain a priority boost lifting its
+   goodness value over any task found in higher priority queues.
+
+   still_running_back:
+
+       qid = topqid;
+       while (qid > 0) {
+           if (! list_empty(&prio_queues[qid])) break;
+           qid--;
+       }
+       topqid = qid;
+
+       botqid = qid-PROC_CHANGE_PENALTY-1;
+       if (botqid <= 0) botqid = 1;
+
+   Since the tasks in each priority queue are not ordered, we still need
+   to search the priority queues in the range [topqid .. botqid] comparing
+   the goodness values as the current scheduler does. A further
+   optimization that we note is that if we do find a task in one priority
+   queue that ran last on the invoking processor, it is save to stop
+   looking for another task at lower priority levels as we know that this
+   task already received the affinity boost and further search will not
+   result in a task with better overall goodness value.
+
+     search_range:
+
+     while (qid >= botqid) {
+         int found_local_task = 0;
+         list_for_each(tmp, &prio_queues[qid]) {
+             p = list_entry(tmp, struct task_struct, run_list);
+             if (can_schedule(p, this_cpu)) {
+                 int weight;
+                 weight = goodness(p,this_cpu,prev->active_mm);
+                 if (weight == 0) {
+                      /* should not be in this queue, but
+                       * error in timer.c where a running
+                       * task is not on the runqueue
+                       */
+                     tmp = tmp->prev;
+                     list_del(&p->run_list);
+                     list_add_tail(&p->run_list,&prio_queues[0]);
+                     continue;
+                 }
+                 if (p->processor == this_cpu)
+                     found_local_task = 1;
+                 if (weight > c)
+                     c = weight, next = p;
+             }
+         }
+         if (found_local_task)
+             goto found_local_task_cont;
+         qid--;
+     }
+
+   Having searched the given range [topqid .. botqid] and not having found
+   a task to run on this cpu indicates that all tasks in those priority
+   queues, and we know that there are tasks in that range, are currently
+   running on other cpus. Accordingly we need to search further down the
+   priority queues to find a suitable candidate to run. At the current
+   time we simply search all the way down to qid=1. A further optimization
+   that can be deployed would be to find a schedulable task and from there
+   determine a new botqid. We have chosen the current path to reduce code
+   complexity. If we already searched the 2nd range and still have not
+   found a task to run, then we have to test whether we have to
+   recalculate the counter values of all tasks in the system. In the
+   current scheduler this would be the case if the goodness value of all
+   runnable tasks is zero, i.e. the counter values are zero. In this
+   implementation, all zero counter tasks are enqueued in the lowest
+   priority queue. Hence if there are tasks enqueued in the lowest
+   priority queue at this point, then we need to invoke the recalculate
+   mechanism. The test whether we have to search further is coded as
+   follows:
+
+
+     if (c < 0) {
+         /* we didn't find any suitable task, did we search all the
+     queues ? */
+         if (!tried_all_queues && (botqid > 1)) {
+             tried_all_queues = 1;
+             botqid = 1;
+             goto search_range;
+         }
+         /* we searched all queues and still didn't find any task to run.
+          * now check whether we have to run recalculate
+          * if the 0-bucket is non empty then c would be 0
+          */
+         if (!list_empty(&prio_queues[0]))
+         goto recalculate;
+     }
+     /* Do we need to re-calculate counters? */
+     if (!c)
+         goto recalculate;
+     found_local_task_cont:     /* lable to continue when search range
+     found task */
+
+   The recalculate mechanism first  updates the counter values of all
+   tasks according to the algorithm of the current scheduler without
+   holding the runqueue lock. It then reacquires the runqueue lock and all
+   tasks that previously had a zero counter value, are still enqueued in
+   the lowest priority queue which is not considered for scheduling. We
+   then requeue all the processes in the lowest priority queue into their
+   new priority queue determined by the updated counter value and continue
+   with repeat_schedule.
+
+     recalculate:
+         {
+             struct task_struct *p;
+             struct list_head *listhead = &prio_queues[0];
+             spin_unlock_irq(&runqueue_lock);
+             read_lock(&tasklist_lock);
+             for_each_task(p)
+                 p->counter = (p->counter >> 1) + NICE_TO_TICKS(p->nice);
+             read_unlock(&tasklist_lock);
+             spin_lock_irq(&runqueue_lock);
+
+             /* now we hold the lock again...
+              * all tasks should have been in the 0-bucket.
+              * after reassignment no task should be in the 0-bucket
+              * so we run through it and assign a new bucket for each
+     task.
+              */
+
+             for (tmp = listhead->next; tmp != listhead; ) {
+                 /* we first advance because we are dequeueing */
+                 p = list_entry(tmp, struct task_struct, run_list);
+                 tmp = tmp->next;
+                 move_last_runqueue(p);
+             }
+         }
+         goto repeat_schedule;
+
+Assigning tasks to priority queues
+
+   Other than the strict ordering mechanism, we have so far left out the
+   specifics of the task_to_qid() routine. Given that we want to reduce
+   the number of tasks to traverse when making a scheduling decision, we
+   need to establish what the distribution of non affinity goodness values
+   is for various general applications. For that we simply counted the
+   occurrence of the na_goodness value for running full kernel builds and
+   the ChatroomC benchmark. The graphs are shown below.
+
+   [PrioSc1.png] [PrioSc2.png]
+
+   Since we only have 32 priority levels, we need to properly distribute
+   the weight levels over this range. As can be seen there is a heavy
+   concentration between 16 and 32. Hence an equal distribution seems
+   inadequate. Therefore we assign the na_goodness values according to the
+   following ranges
+
+   0 => 0; 1..16 => 1..8; 17..32 => 9..24; 33..63 => 25..31. That is we
+   dedicate a single priority queue to each na_goodness value in the most
+   populated value range. The implementation of task_to_qid() is as
+   follows:
+
+     static int  task_to_qid(struct task_struct *p)
+     {
+         int qid;
+
+         /*
+          * Be sure to give sufficiently high boost to realtime tasks
+          */
+         if ((p->policy & ~SCHED_YIELD) != SCHED_OTHER) {
+             qid = REALTIME_QID;
+             goto out;
+         }
+
+         /*
+          * na_goodness is based on the number of ticks left.
+          * Don't do any other calculations if the time slice is
+          * over..
+          */
+         qid = p->counter;
+         if (!qid)
+             goto out;
+         qid += 20 - p->nice;
+
+         /* Now translate the na_goodness value to a queue index qid
+          *  00       =>   0         ratio
+          *  01..16   =>   1..8      2:1
+          *  17..32   =>   9..24     1:1
+          *  33..63   =>   25..31    4:1
+          */
+
+     if (qid < 17) {
+         qid = (qid == 0) ? 0 : ((qid > 0) ? ((qid+1)>>1) : 1);
+         goto out;
+     }
+     if (qid > 32) {
+         qid = 24 + ((qid & 31) >> 2);
+         goto out;
+     }
+     qid = qid - 8;
+
+     out:
+         return qid;
+     }
+
+   Returning back to the scheduling algorithm we note that the number of
+   queues to be traversed can generally at least be PROC_CHANGE_PENALTY+1
+   unless a local task was found. Focusing again on the weight
+   distribution graphs, we can see that for the two cases presented, the
+   vast majority of tasks would be scanned on the x86 platform, where the
+   penalty is set to 15. We therefore reduced the penalty to 5 to
+   alleviate this drawback resulting from such a high value.
+
+Limitations of the Implementation
+
+   The main purpose of this priority-based scheduler implementation is to
+   explore what impact the introduction of priority queues will have on
+   scalability. Current limitation of the implementation are the lack of
+   fine tuning for different architectures. At this point we have focused
+   on an x86 platform. Tuning for other platforms would involve
+   determining the right number of priority queues and eventual changes to
+   the PROC_CHANGE_PENALTY.

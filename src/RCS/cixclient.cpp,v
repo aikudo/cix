@@ -1,4 +1,26 @@
-// $Id: cixclient.cpp,v 1.2 2014-05-27 23:50:13-07 - - $
+head	1.1;
+access;
+symbols;
+locks;
+comment	@// @;
+
+
+1.1
+date	2014.05.25.19.44.05;	author -;	state -;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@-
+@
+text
+@// $Id: cixclient.cpp,v 1.4 2014-05-23 22:54:44-07 - - $
 
 #include <iostream>
 #include <string>
@@ -47,31 +69,11 @@ void cix_ls (client_socket& server) {
    }
 }
 
-void cix_put (client_socket& server) {
-   cix_header header;
-   header.cix_command = CIX_LS;
-   elog << "sending header " << header << endl;
-   send_packet (server, &header, sizeof header);
-   recv_packet (server, &header, sizeof header);
-   elog << "received header " << header << endl;
-   if (header.cix_command != CIX_LSOUT) {
-      elog << " sent CIX_LS, server did not return CIX_LSOUT" << endl;
-   }else {
-      char buffer[header.cix_nbytes + 1];
-      recv_packet (server, buffer, header.cix_nbytes);
-      elog << "received " << header.cix_nbytes << " bytes" << endl;
-      buffer[header.cix_nbytes] = '\0';
-      cout << buffer;
-   }
-}
-
 
 unordered_map<string,cix_command> command_map {
    {"exit", CIX_EXIT},
    {"help", CIX_HELP},
    {"ls"  , CIX_LS  },
-   {"put" , CIX_PUT },
-   {"rm"  , CIX_RM  },
 };
 
 int main (int argc, char** argv) {
@@ -121,3 +123,4 @@ int main (int argc, char** argv) {
 }
 
 
+@

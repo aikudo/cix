@@ -1,4 +1,26 @@
-// $Id: sockets.h,v 1.2 2014-05-27 23:50:13-07 - - $
+head	1.1;
+access;
+symbols;
+locks;
+comment	@ * @;
+
+
+1.1
+date	2014.05.25.19.44.05;	author -;	state -;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@-
+@
+text
+@// $Id: sockets.h,v 1.2 2014-05-23 22:17:25-07 - - $
 
 #ifndef __SOCKET_H__
 #define __SOCKET_H__
@@ -42,15 +64,13 @@ class base_socket {
       // client_socket initialization
       void connect (const string host, const in_port_t port);
       // accepted_socket initialization
-      // where is to_string (socket_fd??)
-      //string to_string_socket_fd() { return to_string (socket_fd*10000); }
       string to_string_socket_fd() { return to_string (socket_fd); }
       void set_socket_fd (int fd);
    public:
       void close();
       ssize_t send (const void* buffer, size_t bufsize);
       ssize_t recv (void* buffer, size_t bufsize);
-      void set_non_blocking (const bool); //off-on blocking
+      void set_non_blocking (const bool);
       friend string to_string (const base_socket& sock);
 };
 
@@ -133,17 +153,7 @@ class socket_h_error: public socket_error {
 //
 // class hostinfo
 // information about a host given hostname or IPv4 address
-// 
-// extract from :
 //
-//typedef struct hostent {
-//   char FAR      *h_name;
-//   char FAR  FAR **h_aliases;
-//   short         h_addrtype;
-//   short         h_length;
-//   char FAR  FAR **h_addr_list;
-//} HOSTENT, *PHOSTENT, FAR *LPHOSTENT;
-
 
 class hostinfo {
    public:
@@ -162,3 +172,4 @@ string to_string (const in_addr& ipv4_addr);
 
 #endif
 
+@

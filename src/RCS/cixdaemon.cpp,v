@@ -1,4 +1,26 @@
-// $Id: cixdaemon.cpp,v 1.2 2014-05-27 23:50:13-07 - - $
+head	1.1;
+access;
+symbols;
+locks;
+comment	@// @;
+
+
+1.1
+date	2014.05.25.19.44.05;	author -;	state -;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.1
+log
+@-
+@
+text
+@// $Id: cixdaemon.cpp,v 1.3 2014-05-23 22:54:44-07 - - $
 
 #include <iostream>
 #include <string>
@@ -12,13 +34,13 @@ using namespace std;
 #include "logstream.h"
 #include "sockets.h"
 
-logstream elog (cerr); //create an obj elog using cerr as output
+logstream elog (cerr);
 
 void fork_cixserver (server_socket& server, accepted_socket& accept) {
    pid_t pid = fork();
    if (pid == 0) { // child
       server.close();
-      execlp ("cixserver", "cixserver-forked",
+      execlp ("cixserver", "cixserver",
               accept.to_string_socket_fd().c_str(), nullptr);
       // Can't get here?!
       elog << "execlp failed: " << strerror (errno) << endl;
@@ -56,8 +78,7 @@ int main (int argc, char** argv) {
          elog << to_string (hostinfo()) << " accepting port "
               << to_string (port) << endl;
          accepted_socket client_sock;
-         //this a blocking
-         listener.accept (client_sock); //waiting for a client?
+         listener.accept (client_sock);
          elog << "accepted " << to_string (client_sock) << endl;
          try {
             fork_cixserver (listener, client_sock);
@@ -72,3 +93,4 @@ int main (int argc, char** argv) {
    return 0;
 }
 
+@

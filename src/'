@@ -1,4 +1,4 @@
-// $Id: sockets.cpp,v 1.2 2014-05-27 23:50:13-07 - - $
+// $Id: sockets.cpp,v 1.1 2014-05-25 12:44:05-07 - - $
 
 #include <cerrno>
 #include <cstring>
@@ -99,7 +99,7 @@ void base_socket::set_non_blocking (const bool blocking) {
    if (opts < 0) throw socket_sys_error ("fcntl");
    if (blocking) opts |= O_NONBLOCK;
             else opts &= compl O_NONBLOCK;
-   opts = ::fcntl (socket_fd, F_SETFL, opts); //function overloading!!
+   opts = ::fcntl (socket_fd, F_SETFL, opts);
    if (opts < 0) throw socket_sys_error ("fcntl");
 }
 
@@ -115,12 +115,10 @@ server_socket::server_socket (in_port_t port) {
    base_socket::listen();
 }
 
-// private to_string for hostinfo
 string to_string (const hostinfo& info) {
    return info.hostname + " (" + to_string (info.addresses[0]) + ")";
 }
 
-//global to_string <exported into header>
 string to_string (const in_addr& ipv4_addr) { 
    char buffer[INET_ADDRSTRLEN];
    const char *result = ::inet_ntop (AF_INET, &ipv4_addr,
@@ -129,7 +127,6 @@ string to_string (const in_addr& ipv4_addr) {
    return result; 
 }
 
-// private to_string for base_socket
 string to_string (const base_socket& sock) {
    hostinfo info (sock.socket_addr.sin_addr);
    return info.hostname + " (" + to_string (info.addresses[0])

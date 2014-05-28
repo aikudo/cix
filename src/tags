@@ -1,0 +1,103 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+CIS_ACK	cixlib.h	/^                  CIX_FILE, CIX_LSOUT, CIS_ACK, CIS_NAK};$/;"	e	enum:cix_command
+CIS_NAK	cixlib.h	/^                  CIX_FILE, CIX_LSOUT, CIS_ACK, CIS_NAK};$/;"	e	enum:cix_command
+CIX_ERROR	cixlib.h	/^enum cix_command {CIX_ERROR = 0, CIX_EXIT,$/;"	e	enum:cix_command
+CIX_EXIT	cixlib.h	/^enum cix_command {CIX_ERROR = 0, CIX_EXIT,$/;"	e	enum:cix_command
+CIX_FILE	cixlib.h	/^                  CIX_FILE, CIX_LSOUT, CIS_ACK, CIS_NAK};$/;"	e	enum:cix_command
+CIX_FILENAME_SIZE	cixlib.h	/^size_t constexpr CIX_FILENAME_SIZE = 59;$/;"	v
+CIX_GET	cixlib.h	/^                  CIX_GET, CIX_HELP, CIX_LS, CIX_PUT, CIX_RM,$/;"	e	enum:cix_command
+CIX_HELP	cixlib.h	/^                  CIX_GET, CIX_HELP, CIX_LS, CIX_PUT, CIX_RM,$/;"	e	enum:cix_command
+CIX_LS	cixlib.h	/^                  CIX_GET, CIX_HELP, CIX_LS, CIX_PUT, CIX_RM,$/;"	e	enum:cix_command
+CIX_LSOUT	cixlib.h	/^                  CIX_FILE, CIX_LSOUT, CIS_ACK, CIS_NAK};$/;"	e	enum:cix_command
+CIX_PUT	cixlib.h	/^                  CIX_GET, CIX_HELP, CIX_LS, CIX_PUT, CIX_RM,$/;"	e	enum:cix_command
+CIX_RM	cixlib.h	/^                  CIX_GET, CIX_HELP, CIX_LS, CIX_PUT, CIX_RM,$/;"	e	enum:cix_command
+CLIENTOBJS	Makefile	/^CLIENTOBJS = cixclient.o sockets.o cixlib.o$/;"	m
+CLOSED_FD	sockets.h	/^      static constexpr int CLOSED_FD = -1;$/;"	m	class:base_socket
+CPPSRCS	Makefile	/^CPPSRCS    = sockets.cpp cixlib.cpp \\$/;"	m
+DAEMONOBJS	Makefile	/^DAEMONOBJS = cixdaemon.o sockets.o cixlib.o$/;"	m
+DEPFILE	Makefile	/^DEPFILE    = Makefile.dep$/;"	m
+EXECBINS	Makefile	/^EXECBINS   = cixclient cixserver cixdaemon$/;"	m
+GPP	Makefile	/^GPP        = g++ -g -O0 -Wall -Wextra -std=gnu++11$/;"	m
+HEADERS	Makefile	/^HEADERS    = sockets.h cixlib.h logstream.h$/;"	m
+LISTING	Makefile	/^LISTING    = Listing.ps$/;"	m
+MAXRECV	sockets.h	/^      static constexpr size_t MAXRECV = 0xFFFF;$/;"	m	class:base_socket
+OBJECTS	Makefile	/^OBJECTS    = ${CLIENTOBJS} ${SERVEROBJS} ${DAEMONOBJS}$/;"	m
+SERVEROBJS	Makefile	/^SERVEROBJS = cixserver.o sockets.o cixlib.o$/;"	m
+SOURCES	Makefile	/^SOURCES    = ${HEADERS} ${CPPSRCS} Makefile$/;"	m
+__CIXLIB__H__	cixlib.h	4;"	d
+__LOGSTREAM_H__	logstream.h	12;"	d
+__SOCKET_H__	sockets.h	4;"	d
+accept	sockets.cpp	/^void base_socket::accept (base_socket& new_socket) const {$/;"	f	class:base_socket
+accept	sockets.h	/^      void accept (accepted_socket& sock) {$/;"	f	class:server_socket
+accepted_socket	sockets.h	/^      accepted_socket() {}$/;"	f	class:accepted_socket
+accepted_socket	sockets.h	/^      accepted_socket(int fd) { set_socket_fd (fd); }$/;"	f	class:accepted_socket
+accepted_socket	sockets.h	/^class accepted_socket: public base_socket {$/;"	c
+addresses	sockets.h	/^      const vector<in_addr> addresses;$/;"	m	class:hostinfo
+aliases	sockets.h	/^      const vector<string> aliases;$/;"	m	class:hostinfo
+base_socket	sockets.cpp	/^base_socket::base_socket() {$/;"	f	class:base_socket
+base_socket	sockets.h	/^class base_socket {$/;"	c
+bind	sockets.cpp	/^void base_socket::bind (const in_port_t port) {$/;"	f	class:base_socket
+cix_command	cixlib.h	/^enum cix_command {CIX_ERROR = 0, CIX_EXIT,$/;"	g
+cix_filename	cixlib.h	/^   char cix_filename[CIX_FILENAME_SIZE];$/;"	m	struct:cix_header
+cix_header	cixlib.h	/^   cix_header() { memset (cix_filename, 0, CIX_FILENAME_SIZE); }$/;"	f	struct:cix_header
+cix_header	cixlib.h	/^struct cix_header {$/;"	s
+cix_help	cixclient.cpp	/^void cix_help() {$/;"	f
+cix_ls	cixclient.cpp	/^void cix_ls (client_socket& server) {$/;"	f
+cixclient_exit	cixclient.cpp	/^struct cixclient_exit: public exception {};$/;"	s	file:
+client_socket	sockets.cpp	/^client_socket::client_socket (string host, in_port_t port) {$/;"	f	class:client_socket
+client_socket	sockets.h	/^class client_socket: public base_socket {$/;"	c
+close	sockets.cpp	/^void base_socket::close() {$/;"	f	class:base_socket
+connect	sockets.cpp	/^void base_socket::connect (const string host, const in_port_t port) {$/;"	f	class:base_socket
+create	sockets.cpp	/^void base_socket::create() {$/;"	f	class:base_socket
+execname	logstream.h	/^      string execname;$/;"	m	class:logstream
+fork_cixserver	cixdaemon.cpp	/^void fork_cixserver (server_socket& server, accepted_socket& accept) {$/;"	f
+host_errno	sockets.h	/^      int host_errno;$/;"	m	class:socket_h_error
+hostinfo	sockets.cpp	/^hostinfo::hostinfo (const in_addr& ipv4_addr):$/;"	f	class:hostinfo
+hostinfo	sockets.cpp	/^hostinfo::hostinfo (const string& hostname):$/;"	f	class:hostinfo
+hostinfo	sockets.cpp	/^hostinfo::hostinfo (hostent* host):$/;"	f	class:hostinfo
+hostinfo	sockets.cpp	/^hostinfo::hostinfo(): hostinfo (localhost()) {$/;"	f	class:hostinfo
+hostinfo	sockets.h	/^class hostinfo {$/;"	c
+hostname	sockets.h	/^      const string hostname;$/;"	m	class:hostinfo
+init_addresses	sockets.cpp	/^vector<in_addr> init_addresses (hostent* host) {$/;"	f
+init_aliases	sockets.cpp	/^vector<string> init_aliases (hostent* host) {$/;"	f
+init_hostname	sockets.cpp	/^string init_hostname (hostent* host) {$/;"	f
+listen	sockets.cpp	/^void base_socket::listen() const {$/;"	f	class:base_socket
+localhost	sockets.cpp	/^string localhost() {$/;"	f
+logstream	logstream.h	/^      logstream (ostream& out, const string& execname = ""):$/;"	f	class:logstream
+logstream	logstream.h	/^class logstream {$/;"	c
+main	cixclient.cpp	/^int main (int argc, char** argv) {$/;"	f
+main	cixdaemon.cpp	/^int main (int argc, char** argv) {$/;"	f
+main	cixserver.cpp	/^int main (int argc, char**argv) {$/;"	f
+operator <<	cixlib.cpp	/^ostream& operator<< (ostream& out, const cix_header& header) {$/;"	f
+operator <<	logstream.h	/^      ostream& operator<< (const T& obj) {$/;"	f	class:logstream
+out	logstream.h	/^      ostream& out;$/;"	m	class:logstream
+reap_zombies	cixdaemon.cpp	/^void reap_zombies() {$/;"	f
+recv	sockets.cpp	/^ssize_t base_socket::recv (void* buffer, size_t bufsize) {$/;"	f	class:base_socket
+recv_packet	cixlib.cpp	/^void recv_packet (base_socket& socket, void* buffer, size_t bufsize) {$/;"	f
+reply_ls	cixserver.cpp	/^void reply_ls (accepted_socket& client_sock, cix_header& header) {$/;"	f
+send	sockets.cpp	/^ssize_t base_socket::send (const void* buffer, size_t bufsize) {$/;"	f	class:base_socket
+send_packet	cixlib.cpp	/^void send_packet (base_socket& socket,$/;"	f
+server_socket	sockets.cpp	/^server_socket::server_socket (in_port_t port) {$/;"	f	class:server_socket
+server_socket	sockets.h	/^class server_socket: public base_socket {$/;"	c
+set_execname	logstream.h	/^      void set_execname (const string& name) { execname = name; }$/;"	f	class:logstream
+set_non_blocking	sockets.cpp	/^void base_socket::set_non_blocking (const bool blocking) {$/;"	f	class:base_socket
+set_socket_fd	sockets.cpp	/^void base_socket::set_socket_fd (int fd) {$/;"	f	class:base_socket
+socket_addr	sockets.h	/^      sockaddr_in socket_addr;$/;"	m	class:base_socket
+socket_error	sockets.h	/^      explicit socket_error (const string& what): runtime_error(what){}$/;"	f	class:socket_error
+socket_error	sockets.h	/^class socket_error: public runtime_error {$/;"	c
+socket_h_error	sockets.h	/^      explicit socket_h_error (const string& what):$/;"	f	class:socket_h_error
+socket_h_error	sockets.h	/^class socket_h_error: public socket_error {$/;"	c
+socket_sys_error	sockets.h	/^      explicit socket_sys_error (const string& what):$/;"	f	class:socket_sys_error
+socket_sys_error	sockets.h	/^class socket_sys_error: public socket_error {$/;"	c
+sys_errno	sockets.h	/^      int sys_errno;$/;"	m	class:socket_sys_error
+to_string	sockets.cpp	/^string to_string (const base_socket& sock) {$/;"	f
+to_string	sockets.cpp	/^string to_string (const hostinfo& info) {$/;"	f
+to_string	sockets.cpp	/^string to_string (const in_addr& ipv4_addr) { $/;"	f
+to_string_socket_fd	sockets.h	/^      string to_string_socket_fd() { return to_string (socket_fd); }$/;"	f	class:base_socket
+to_string_socket_fd	sockets.h	/^      string to_string_socket_fd() {$/;"	f	class:accepted_socket
+~base_socket	sockets.cpp	/^base_socket::~base_socket() {$/;"	f	class:base_socket
