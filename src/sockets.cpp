@@ -1,4 +1,4 @@
-// $Id: sockets.cpp,v 1.2 2014-05-27 23:50:13-07 - - $
+// $Id: sockets.cpp,v 1.3 2014-05-28 10:33:19-07 - - $
 
 #include <cerrno>
 #include <cstring>
@@ -27,7 +27,8 @@ void base_socket::close() {
 }
 
 void base_socket::create() {
-   socket_fd = ::socket (AF_INET, SOCK_STREAM, 0); //w or w/o :: doesn't matter
+//w or w/o :: doesn't matter
+   socket_fd = ::socket (AF_INET, SOCK_STREAM, 0); 
    if (socket_fd < 0) throw socket_sys_error ("socket");
    int on = 1;
    int status = ::setsockopt (socket_fd, SOL_SOCKET, SO_REUSEADDR,

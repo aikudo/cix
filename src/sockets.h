@@ -1,4 +1,4 @@
-// $Id: sockets.h,v 1.2 2014-05-27 23:50:13-07 - - $
+// $Id: sockets.h,v 1.3 2014-05-28 10:33:19-07 - - $
 
 #ifndef __SOCKET_H__
 #define __SOCKET_H__
@@ -43,7 +43,8 @@ class base_socket {
       void connect (const string host, const in_port_t port);
       // accepted_socket initialization
       // where is to_string (socket_fd??)
-      //string to_string_socket_fd() { return to_string (socket_fd*10000); }
+      //string to_string_socket_fd()
+      //{ return to_string (socket_fd*10000); }
       string to_string_socket_fd() { return to_string (socket_fd); }
       void set_socket_fd (int fd);
    public:

@@ -1,4 +1,4 @@
-// $Id: cixclient.cpp,v 1.4 2014-05-28 10:31:25-07 - - $
+// $Id: cixclient.cpp,v 1.5 2014-05-28 10:33:19-07 - - $
 
 #include <iostream>
 #include <fstream>
@@ -44,7 +44,8 @@ vector<string> split (const string& line, const string& delimiters) {
 }
 
 void cix_put (client_socket& server, vector<string>& params) {
-   //if (params.size() != 2) elog << params << "missing filenames" << endl;
+   //if (params.size() != 2) 
+   //elog << params << "missing filenames" << endl;
    cix_header header;
    ifstream file(params[1], ios::in|ios::binary|ios::ate); 
    if (!file.is_open()) {
@@ -71,7 +72,8 @@ void cix_put (client_socket& server, vector<string>& params) {
 }
 
 void cix_get (client_socket& server, vector<string>& params) {
-   //if (params.size() != 2) elog << params << "missing filenames" << endl;
+   //if (params.size() != 2)
+   //elog << params << "missing filenames" << endl;
    cix_header header;
    string filename = params[1];
    header.cix_command = CIX_GET;
