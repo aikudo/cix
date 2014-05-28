@@ -1,9 +1,11 @@
-// $Id: cixclient.cpp,v 1.2 2014-05-27 23:50:13-07 - - $
+// $Id: cixclient.cpp,v 1.3 2014-05-28 02:38:49-07 - - $
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <cerrno>
 using namespace std;
 
 #include <libgen.h>
@@ -27,6 +29,66 @@ void cix_help() {
       "rm filename  - Remove file from remote server.",
    };
    for (const auto& line: help) cout << line << endl;
+}
+
+vector<string> split (const string& line, const string& delimiters) {
+   vector<string> words;
+   int end = 0;
+   for (;;) {
+      size_t start = line.find_first_not_of (delimiters, end);
+      if (start == string::npos) break;
+      end = line.find_first_of (delimiters, start);
+      words.push_back (line.substr (start, end - start));
+   }
+   return words;
+}
+
+void cix_get (client_socket& server, vector<string>& params) {
+   //if (params.size() != 2) elog << params << "missing filenames" << endl;
+
+   cix_header header;
+   string filename = params[1];
+   header.cix_command = CIX_GET;
+   strcpy (header.cix_filename , filename.c_str());
+   elog << "sending header " << header << endl;
+   send_packet (server, &header, sizeof header);
+   recv_packet (server, &header, sizeof header);
+   elog << "received header " << header << endl;
+   if (header.cix_command != CIX_FILE) {
+      elog << strerror(header.cix_nbytes) << endl;
+   }else {
+      string filename {header.cix_filename};
+      //char *fileout = header.cix_filename;
+      char buffer[header.cix_nbytes + 1];
+      recv_packet (server, buffer, header.cix_nbytes); //payload
+      elog << "received " << header.cix_nbytes << " bytes" << endl;
+      filename.append(".got");
+
+      //ofstream fileout (filename.c_str(), ios::out || ios::binary);
+      ofstream fileout;
+      fileout.open ("crap", ios::out | ios::binary);
+      if (!fileout.is_open()) {
+         elog << "can't open: " << filename
+              << " " << strerror(errno) << endl;
+      } else{
+         fileout.write (buffer, header.cix_nbytes);
+         fileout.close();
+      }
+   }
+}
+
+void cix_rm (client_socket& server, vector<string>& params) {
+   cix_header header;
+   string filename = params[1];
+   header.cix_command = CIX_RM;
+   strcpy (header.cix_filename , filename.c_str());
+   elog << "sending header " << header << endl;
+   send_packet (server, &header, sizeof header);
+   recv_packet (server, &header, sizeof header);
+   elog << "received header " << header << endl;
+   if (header.cix_command == CIS_NAK) {
+      elog << strerror(header.cix_nbytes) << endl;
+   }
 }
 
 void cix_ls (client_socket& server) {
@@ -71,6 +133,7 @@ unordered_map<string,cix_command> command_map {
    {"help", CIX_HELP},
    {"ls"  , CIX_LS  },
    {"put" , CIX_PUT },
+   {"get" , CIX_GET },
    {"rm"  , CIX_RM  },
 };
 
@@ -90,7 +153,11 @@ int main (int argc, char** argv) {
          getline (cin, line);
          if (cin.eof()) throw cixclient_exit();
          elog << "command " << line << endl;
-         const auto& itor = command_map.find (line);
+         vector<string> params = split (line, " \t");
+         elog << "params0 " << params[0] << endl;
+         if(params.size() > 1) elog << "params1 " << params[1] << endl;
+
+         const auto& itor = command_map.find (params[0]);
          cix_command cmd = itor == command_map.end()
                          ? CIX_ERROR : itor->second;
          try {
@@ -101,8 +168,14 @@ int main (int argc, char** argv) {
                case CIX_HELP:
                   cix_help();
                   break;
+               case CIX_RM:
+                  cix_rm (server, params);
+                  break;
                case CIX_LS:
                   cix_ls (server);
+                  break;
+               case CIX_GET:
+                  cix_get (server, params);
                   break;
                default:
                   elog << line << ": invalid command" << endl;
