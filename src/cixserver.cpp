@@ -1,4 +1,4 @@
-// $Id: cixserver.cpp,v 1.4 2014-05-28 02:38:49-07 - - $
+// $Id: cixserver.cpp,v 1.5 2014-05-28 10:31:25-07 - - $
 
 #include <iostream>
 #include <fstream>
@@ -23,6 +23,28 @@ void reply_rm (accepted_socket& client_sock, cix_header& header) {
       elog << "sending NAK header " << header << endl;
       send_packet (client_sock, &header, sizeof header);
    } else{
+      header.cix_nbytes = 0;
+      header.cix_command = CIS_ACK;
+      elog << "sending ACK header " << header << endl;
+      send_packet (client_sock, &header, sizeof header);
+   }
+}
+
+void reply_put (accepted_socket& client_sock, cix_header& header) {
+   string filename {header.cix_filename};
+   uint32_t size {header.cix_nbytes};
+   char buffer[size + 1];
+   filename.append(".gotput");
+   recv_packet (client_sock, buffer, size);
+   ofstream fileout;
+   fileout.open (filename, ios::out | ios::binary);
+   if (!fileout.is_open()){
+      elog << "can't open: " << filename
+         << " " << strerror(errno) << endl;
+   } else {
+      fileout.write (buffer, size);
+      fileout.close();
+      header.cix_nbytes = 0;
       header.cix_command = CIS_ACK;
       elog << "sending ACK header " << header << endl;
       send_packet (client_sock, &header, sizeof header);
@@ -97,6 +119,9 @@ int main (int argc, char**argv) {
                break;
             case CIX_GET:
                reply_get (client_sock, header);
+               break;
+            case CIX_PUT:
+               reply_put (client_sock, header);
                break;
             case CIX_RM:
                reply_rm (client_sock, header);

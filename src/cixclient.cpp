@@ -1,4 +1,4 @@
-// $Id: cixclient.cpp,v 1.3 2014-05-28 02:38:49-07 - - $
+// $Id: cixclient.cpp,v 1.4 2014-05-28 10:31:25-07 - - $
 
 #include <iostream>
 #include <fstream>
@@ -43,9 +43,35 @@ vector<string> split (const string& line, const string& delimiters) {
    return words;
 }
 
+void cix_put (client_socket& server, vector<string>& params) {
+   //if (params.size() != 2) elog << params << "missing filenames" << endl;
+   cix_header header;
+   ifstream file(params[1], ios::in|ios::binary|ios::ate); 
+   if (!file.is_open()) {
+      elog << params[1] << ": " << strerror(errno) << endl;
+   } else{
+      streampos size {file.tellg()};
+      char *memblock = new char [size];
+      file.seekg (0, ios::beg);
+      file.read (memblock, size);
+      file.close();
+      header.cix_command = CIX_PUT;
+      header.cix_nbytes = size;
+      strcpy(header.cix_filename, params[1].c_str());
+      elog << "sending header " << header << endl;
+      send_packet (server, &header, sizeof header);
+      send_packet (server, memblock, size);
+      recv_packet (server, &header, sizeof header);
+      elog << "received header " << header << endl;
+      if (header.cix_command != CIS_ACK)
+         elog << strerror(header.cix_nbytes) << endl;
+      else
+         elog << "put " << params[1] << " successed" << endl;
+   }
+}
+
 void cix_get (client_socket& server, vector<string>& params) {
    //if (params.size() != 2) elog << params << "missing filenames" << endl;
-
    cix_header header;
    string filename = params[1];
    header.cix_command = CIX_GET;
@@ -63,7 +89,6 @@ void cix_get (client_socket& server, vector<string>& params) {
       recv_packet (server, buffer, header.cix_nbytes); //payload
       elog << "received " << header.cix_nbytes << " bytes" << endl;
       filename.append(".got");
-
       //ofstream fileout (filename.c_str(), ios::out || ios::binary);
       ofstream fileout;
       fileout.open ("crap", ios::out | ios::binary);
@@ -92,24 +117,6 @@ void cix_rm (client_socket& server, vector<string>& params) {
 }
 
 void cix_ls (client_socket& server) {
-   cix_header header;
-   header.cix_command = CIX_LS;
-   elog << "sending header " << header << endl;
-   send_packet (server, &header, sizeof header);
-   recv_packet (server, &header, sizeof header);
-   elog << "received header " << header << endl;
-   if (header.cix_command != CIX_LSOUT) {
-      elog << " sent CIX_LS, server did not return CIX_LSOUT" << endl;
-   }else {
-      char buffer[header.cix_nbytes + 1];
-      recv_packet (server, buffer, header.cix_nbytes);
-      elog << "received " << header.cix_nbytes << " bytes" << endl;
-      buffer[header.cix_nbytes] = '\0';
-      cout << buffer;
-   }
-}
-
-void cix_put (client_socket& server) {
    cix_header header;
    header.cix_command = CIX_LS;
    elog << "sending header " << header << endl;
@@ -176,6 +183,9 @@ int main (int argc, char** argv) {
                   break;
                case CIX_GET:
                   cix_get (server, params);
+                  break;
+               case CIX_PUT:
+                  cix_put (server, params);
                   break;
                default:
                   elog << line << ": invalid command" << endl;
