@@ -1,4 +1,4 @@
-// $Id: cixserver.cpp,v 1.2 2014-05-27 23:50:13-07 - - $
+// $Id: cixserver.cpp,v 1.3 2014-05-28 00:01:27-07 - - $
 
 #include <iostream>
 using namespace std;
@@ -10,6 +10,27 @@ using namespace std;
 #include "sockets.h"
 
 logstream elog (cerr);
+
+void reply_get (accepted_socket& client_sock, cix_header& header) {
+   FILE* ls_pipe = popen ("ls -l", "r");
+
+   //stuff here
+   if (ls_pipe == NULL) throw socket_sys_error ("popen(\"ls -l\")");
+   string ls_output;
+   char buffer[0x1000];
+   for (;;) {
+      char* rc = fgets (buffer, sizeof buffer, ls_pipe);
+      if (rc == nullptr) break;
+      ls_output.append (buffer);
+   }
+   header.cix_command = CIX_LSOUT;
+   header.cix_nbytes = ls_output.size();
+   memset (header.cix_filename, 0, CIX_FILENAME_SIZE);
+   elog << "sending header " << header << endl;
+   send_packet (client_sock, &header, sizeof header);
+   send_packet (client_sock, ls_output.c_str(), ls_output.size());
+   elog << "sent " << ls_output.size() << " bytes" << endl;
+}
 
 void reply_ls (accepted_socket& client_sock, cix_header& header) {
    FILE* ls_pipe = popen ("ls -l", "r");
@@ -52,6 +73,10 @@ int main (int argc, char**argv) {
             case CIX_LS:
                reply_ls (client_sock, header);
                break;
+            case CIX_GET:
+               reply_get (client_sock, header);
+               break;
+
             default:
                elog << "invalid header from client" << endl;
                elog << "cix_nbytes = " << header.cix_nbytes << endl;
