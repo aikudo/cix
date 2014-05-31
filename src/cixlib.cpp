@@ -1,4 +1,4 @@
-// $Id: cixlib.cpp,v 1.1 2014-05-25 12:44:05-07 - - $
+// $Id: cixlib.cpp,v 1.2 2014-05-30 23:42:23-07 - - $
 
 #include <unordered_map>
 #include <string>
@@ -51,4 +51,25 @@ ostream& operator<< (ostream& out, const cix_header& header) {
         << "\"}";
    return out;
 }    
+
+
+string get_cix_server_host (const vector<string>& args, size_t index) {
+   if (index < args.size()) return args[index];
+   char* host = getenv ("CIX_SERVER_HOST");
+   if (host != nullptr) return host;
+   return "localhost";
+}
+
+
+in_port_t get_cix_server_port (const vector<string>& args,
+      size_t index) {
+   string port = "-1";
+   if (index < args.size()) port = args[index];
+   else {
+      char* envport = getenv ("CIX_SERVER_PORT");
+      if (envport != nullptr) port = envport;
+   }
+   return stoi (port);
+}
+
 
